@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoiceDraw — AI 语音绘图工具</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <h1>🎤 VoiceDraw</h1>
+        <span class="subtitle">AI 语音绘图工具</span>
+      </div>
+      <div class="header-right">
+        <button id="micBtn" class="btn-mic">🎤 开始聆听</button>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Canvas Area -->
+      <div class="canvas-area">
+        <canvas id="drawingCanvas"></canvas>
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <!-- Status -->
+        <div class="panel" id="statusPanel">
+          <h3>📡 状态</h3>
+          <div id="statusText" class="status-text">就绪</div>
+          <div id="statusHint" class="status-hint">点击麦克风开始</div>
+        </div>
+
+        <!-- Last Command -->
+        <div class="panel">
+          <h3>📝 识别结果</h3>
+          <div id="lastCommand" class="command-text">—</div>
+        </div>
+
+        <!-- Command History -->
+        <div class="panel">
+          <h3>📋 指令历史</h3>
+          <div id="commandHistory" class="history-list"></div>
+        </div>
+
+        <!-- Quick Commands -->
+        <div class="panel">
+          <h3>💡 试试说</h3>
+          <div class="quick-commands">
+            <span>画一个红色的圆</span>
+            <span>画蓝色正方形</span>
+            <span>移到中间</span>
+            <span>大一点</span>
+            <span>全部变成绿色</span>
+            <span>撤销</span>
+            <span>清除画布</span>
+            <span>保存</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="wave-container" id="waveContainer">
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+      <div id="footerText" class="footer-text">点击 🎤 开始语音绘图</div>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <script src="js/commandParser.js?v=1"></script>
+  <script src="js/drawingEngine.js?v=1"></script>
+  <script src="js/voiceController.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>
