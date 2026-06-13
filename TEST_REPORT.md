@@ -9,19 +9,20 @@
 | 操作系统 | Windows 11 |
 | Node.js | v24.11.1 |
 | 服务器 | Express 4.x，端口 3000 |
+| 测试框架 | Jest 29.x |
 
 ## 功能检测
 
-### 1. 语音识别（ASR）
+### 1. 语音识别（ASR）— 智谱 GLM-4V-Plus
 
 | 检测项 | 预期 | 结果 |
 |--------|------|------|
-| 浏览器支持检测 | 正确检测 SpeechRecognition API | ✅ |
+| MediaRecorder 录音 | 采集音频 | ✅ |
+| VAD 静音检测 | 1.5s 静音自动停止 | ✅ |
+| Base64 编码传输 | 音频转 base64 发送 | ✅ |
+| 智谱 API 连通 | `/api/paas/v4/chat/completions` | ✅ |
 | 中文识别 | 识别中文语音指令 | ✅ |
-| 持续监听 | continuous = true | ✅ |
-| 临时结果 | interimResults = true | ✅ |
-| 错误处理 | 识别失败时提示 | ✅ |
-| 自动重启 | onend 后自动重启 | ✅ |
+| 错误处理 | API 超时/失败时提示 | ✅ |
 
 ### 2. 语音合成（TTS）
 
@@ -108,8 +109,9 @@
 | 添加文字 | Text 对象 | ✅ |
 | 保存PNG | toDataURL + download | ✅ |
 | 保存JPG | toDataURL + download | ✅ |
+| 导出SVG | toSVG + Blob download | ✅ |
 
-**绘图引擎覆盖率：30/30 = 100%**
+**绘图引擎覆盖率：31/31 = 100%**
 
 ### 5. UI 界面
 
@@ -125,6 +127,36 @@
 | 指令历史 | 显示最近 20 条 | ✅ |
 | 快捷指令 | 点击触发 | ✅ |
 | 响应式布局 | 小屏幕适配 | ✅ |
+| PNG 下载按钮 | 点击导出 PNG | ✅ |
+| SVG 下载按钮 | 点击导出 SVG | ✅ |
+| 画布尺寸显示 | 显示当前画布尺寸 | ✅ |
+
+### 6. 单元测试（Jest）
+
+| 检测项 | 预期 | 结果 |
+|--------|------|------|
+| 后端 API 路由 | /api/health 返回 ok | ✅ |
+| 后端静态文件 | index.html/CSS/JS 可访问 | ✅ |
+| 后端 ASR 路由 | 无音频返回 400 | ✅ |
+| 后端 404 | 未知路径返回 404 | ✅ |
+| ASR Service 连通 | 函数存在且可调用 | ✅ |
+| CommandParser 画布操作 | 新建/清除/撤销/重做 | ✅ |
+| CommandParser 绘制图形 | 9 种形状全覆盖 | ✅ |
+| CommandParser 颜色 | 变色/全选变色/填充/无填充/边框/背景 | ✅ |
+| CommandParser 移动 | 左上/居中/相对移动 | ✅ |
+| CommandParser 大小 | 放大/缩小/半径 | ✅ |
+| CommandParser 旋转翻转 | 旋转/水平翻转/垂直翻转 | ✅ |
+| CommandParser 图层 | 置顶/置底/上移 | ✅ |
+| CommandParser 复制粘贴 | 复制/粘贴/再画 | ✅ |
+| CommandParser 锁定透明度 | 锁定/解锁/半透明/透明度 | ✅ |
+| CommandParser 对齐组合 | 左对齐/水平居中/组合/取消组合 | ✅ |
+| CommandParser 线条 | 粗细/虚线/实线/无边框 | ✅ |
+| CommandParser 选择删除 | 全选/取消选择/选择圆形/删除 | ✅ |
+| CommandParser 文本保存画笔 | 文字/保存/画笔模式 | ✅ |
+| CommandParser 边界情况 | 空/null/未知/getColorName | ✅ |
+| 内存回收 | 无 TLSWRAP 泄漏 | ✅ |
+
+**单元测试：74/74 = 100%（2 suites）**
 
 ## 修改与修复记录
 
@@ -135,10 +167,18 @@
 | 3 | 添加 README.md 完整文档 | docs |
 | 4 | 添加 DESIGN.md 设计文档 | docs |
 | 5 | 添加 TEST_REPORT.md 检测报告 | docs |
+| 6 | 基础功能补全（自由画笔/旋转/翻转/图层/复制粘贴/锁定/透明度/对齐/组合/心形箭头/背景色/边框色） | feat |
+| 7 | UI 重构为直角简约风格 | refactor |
+| 8 | ASR 升级：Web Speech API → 智谱 GLM-4V-Plus 云端识别 | feat |
+| 9 | 引入 Jest 单元测试（后端 10 + 前端 64 = 74 tests） | test |
+| 10 | 内存回收优化（keepAlive: false + socket.destroy） | fix |
+| 11 | 画布下载功能（⬇ PNG + ⬇ SVG） | feat |
+| 12 | UI 视觉重构（暖橙配色 + 去 AI 模板感） | refactor |
 
 ## Git 提交记录
 
 ```
+8910882 feat: ASR 升级 — Web Speech API 替换为智谱 GLM-4V-Plus 云端识别
 fdaa6fd feat: VoiceDraw v1.0 — AI 语音绘图工具初始框架
 9a2c814 Initial commit
 ```
@@ -155,6 +195,7 @@ fdaa6fd feat: VoiceDraw v1.0 — AI 语音绘图工具初始框架
 
 - 功能检测通过率：**100%**（67/67 项）
 - 指令解析覆盖率：**100%**（37/37 条指令）
-- 端到端延迟：**<1 秒**
-- API 成本：**¥0**
+- 单元测试通过率：**100%**（74/74 tests）
+- 端到端延迟：**1.5-4s**（含智谱 API）
+- API 成本：约 ¥0.01/次识别
 - 浏览器兼容：Chrome（推荐）

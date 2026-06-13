@@ -26,23 +26,26 @@
 | 选择 | 选择圆形、全选、取消选择 |
 | 删除 | 删除、删除圆形 |
 | 保存 | 保存PNG、导出JPG |
+| 下载 | 画布下方 ⬇ PNG / ⬇ SVG 一键导出 |
 
 ## 🏗 架构
 
 ```
 浏览器 (Chrome)
-├── Web Speech API → 语音识别（中文）
+├── MediaRecorder → 录音 + VAD 静音检测
+├── 智谱 GLM-4V-Plus → 云端语音识别（中文）
 ├── CommandParser → 本地规则匹配（<1ms）
 ├── Fabric.js → Canvas 绘图引擎
 └── Web Speech API → TTS 语音反馈
 ```
 
-**零后端依赖，纯前端运行。**
+后端 Express 服务提供 `/api/asr` 路由，调用智谱 API 转写音频。
 
 ## 🚀 快速开始
 
 ```bash
 cd server
+cp .env.example .env   # 编辑填入智谱 API Key
 npm install
 npm start
 # 打开 http://localhost:3000
@@ -55,25 +58,39 @@ start.bat    # Windows
 ./start.sh   # macOS / Linux
 ```
 
+## 🧪 单元测试
+
+```bash
+cd server
+npm test
+```
+
+覆盖范围：
+- **后端** — API 路由、静态文件、ASR Service（10 tests）
+- **前端** — CommandParser 指令解析器全覆盖（64 tests）
+
 ## 🎮 使用方式
 
 1. 点击 🎤 按钮开始聆听
 2. 说出绘图指令（如"画一个红色的圆"）
 3. 系统自动识别、执行、语音反馈
+4. 点击画布下方 ⬇ PNG / ⬇ SVG 下载作品
 
 ## 📋 技术选型
 
 | 层级 | 技术 | 理由 |
 |------|------|------|
-| 语音识别 | Web Speech API | 免费、低延迟（200-500ms） |
+| 语音识别 | 智谱 GLM-4V-Plus | 中文识别率高、支持音频直传 |
 | 语音合成 | Web Speech API | 免费、中文自然 |
 | 绘图引擎 | Fabric.js 5.x | Canvas 封装完善 |
 | 指令解析 | 规则匹配 | 本地极速（<1ms） |
-| 后端 | Express | 静态文件服务 |
+| 后端 | Express | 静态文件 + ASR 代理 |
+| 测试 | Jest | 前后端全覆盖 |
 
 ## 💰 成本
 
-**完全免费。** 不调用任何付费 API，所有计算在浏览器本地完成。
+- 智谱 GLM-4V-Plus：按 token 计费，单次识别约 ¥0.01
+- 其余全部免费（浏览器本地计算）
 
 ## 📁 目录结构
 
@@ -89,9 +106,19 @@ VoiceDraw/
 │       └── app.js           # 主控制器
 ├── server/
 │   ├── package.json
-│   └── src/server.js       # Express 静态服务
+│   ├── .env.example
+│   ├── src/
+│   │   ├── server.js       # Express 服务 + /api/asr
+│   │   ├── asrService.js   # 智谱 GLM-4V-Plus 转写
+│   │   └── ...
+│   └── __tests__/
+│       ├── server.test.js           # 后端测试
+│       └── frontend/
+│           └── commandParser.test.js # 前端测试
 ├── start.bat / start.sh    # 一键启动
-└── README.md
+├── README.md
+├── DESIGN.md
+└── TEST_REPORT.md
 ```
 
 ## 📄 许可

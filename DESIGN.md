@@ -28,6 +28,7 @@
 | P3 | 锁定图形 | 说"锁定"、"解锁" | ✅ |
 | P3 | 背景色设置 | 说"背景蓝色" | ✅ |
 | P3 | 边框颜色 | 说"边框红色" | ✅ |
+| P3 | 画布下载 | 点击 ⬇ PNG / ⬇ SVG 一键导出 | ✅ |
 
 ## 二、指令能力清单
 
@@ -54,6 +55,7 @@
 | 删除操作 | 删除、删除圆形 | 目标 |
 | 文本标注 | 添加文字"XXX" | 字符串 |
 | 保存导出 | 保存、导出PNG、导出JPG | 格式 |
+| 画布下载 | ⬇ PNG 按钮、⬇ SVG 按钮 | 位图/矢量 |
 
 ### 未实现/暂缓功能
 
@@ -67,44 +69,42 @@
 ### 整体架构
 
 ```
-用户语音 → Web Speech API (ASR) → CommandParser (规则匹配) → DrawingEngine (Fabric.js) → TTS 反馈
+用户语音 → MediaRecorder 录音 → VAD 静音检测 → 智谱 GLM-4V-Plus (ASR)
+         → CommandParser (规则匹配) → DrawingEngine (Fabric.js) → TTS 反馈
 ```
 
-全流程在浏览器本地完成，零网络延迟，零 API 成本。
+前端录音通过 `/api/asr` 发送到 Express 后端，后端调用智谱 API 转写后返回文本。
 
 ### 核心选型
 
 | 层级 | 技术 | 理由 |
 |------|------|------|
-| ASR | Web Speech API | 免费、200-500ms 延迟、Chrome 内置 |
+| ASR | 智谱 GLM-4V-Plus | 中文识别率高、支持音频 base64 直传 |
 | TTS | Web Speech API | 免费、中文自然、100-300ms |
 | 指令解析 | 规则匹配 | <1ms、100% 可控 |
 | 绘图引擎 | Fabric.js 5.x | Canvas 封装完善、对象操作简便 |
-| 服务 | Express | 静态文件托管 |
+| 导出 | PNG (toDataURL) + SVG (toSVG) | 位图/矢量双格式 |
+| 服务 | Express | 静态文件托管 + ASR 代理 |
+| 测试 | Jest | 前后端单元测试全覆盖 |
 
 ### 端到端延迟
 
 | 阶段 | 耗时 |
 |------|------|
-| 语音采集 | 实时 |
-| ASR 识别 | 200-500ms |
+| 语音采集 + VAD | 实时 + 1.5s 静音检测 |
+| ASR 识别（智谱 API） | 1-3s |
 | 指令解析 | <1ms |
 | 绘图执行 | 16-30ms |
 | TTS 反馈 | 100-300ms |
-| **总计** | **316-831ms** |
-
-对比云端方案（2-5秒），本地方案快 5-10 倍。
+| **总计** | **1.5-4s** |
 
 ## 四、成本策略
 
-**本项目完全免费。** 所有计算在浏览器本地完成：
-
-- 语音识别：Web Speech API（浏览器内置，免费）
+- 智谱 GLM-4V-Plus：按 token 计费，单次语音识别约 ¥0.01
 - 语音合成：Web Speech API（浏览器内置，免费）
 - 指令理解：本地规则匹配（免费）
 - 绘图渲染：Fabric.js Canvas（免费）
-
-无任何付费 API 调用，无服务器成本。
+- 服务部署：Express 本地运行（免费）
 
 ## 五、容错设计
 
@@ -115,8 +115,19 @@
 | 缺失参数 | 补充默认值 |
 | 无法执行 | TTS 明确告知原因 |
 | 浏览器不支持 | 提示使用 Chrome |
+| API 超时 | 15s 超时 + 错误提示 |
 
-## 六、设计借鉴声明
+## 六、测试策略
+
+| 层级 | 工具 | 覆盖 |
+|------|------|------|
+| 后端 API | Jest + supertest | 路由、静态文件、ASR Service |
+| 前端逻辑 | Jest + new Function 沙箱 | CommandParser 全部指令 |
+| 内存管理 | Jest --detectOpenHandles | 无 TLSWRAP 泄漏 |
+
+运行：`cd server && npm test`
+
+## 七、设计借鉴声明
 
 本项目 UI 设计借鉴了以下作品：
 

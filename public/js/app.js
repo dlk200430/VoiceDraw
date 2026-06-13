@@ -21,6 +21,14 @@ class VoiceDrawApp {
       document.getElementById('footerText').textContent = active ? '请说出绘图指令...' : '点击 🎤 开始语音绘图';
     });
 
+    // 下载按钮
+    document.getElementById('downloadPngBtn').addEventListener('click', () => {
+      this.engine.saveImage('png');
+    });
+    document.getElementById('downloadSvgBtn').addEventListener('click', () => {
+      this.engine.saveImage('svg');
+    });
+
     document.querySelectorAll('.quick-commands span').forEach(el => {
       el.addEventListener('click', () => {
         this._execute(el.textContent);

@@ -23,7 +23,15 @@
     <div class="main">
       <!-- Canvas Area -->
       <div class="canvas-area">
-        <canvas id="drawingCanvas"></canvas>
+        <div class="canvas-wrapper">
+          <canvas id="drawingCanvas"></canvas>
+          <div class="canvas-toolbar">
+            <button id="downloadPngBtn" class="btn-canvas" title="下载 PNG">⬇ PNG</button>
+            <button id="downloadSvgBtn" class="btn-canvas" title="下载 SVG">⬇ SVG</button>
+            <span class="canvas-toolbar-divider"></span>
+            <span class="canvas-info">800 × 600</span>
+          </div>
+        </div>
       </div>
 
       <!-- Sidebar -->
