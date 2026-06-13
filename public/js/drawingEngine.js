@@ -571,9 +571,22 @@ class DrawingEngine {
 
   // ============ 保存 ============
   saveImage(format) {
-    const dataURL = this.canvas.toDataURL({ format: format, quality: 1 });
+    if (format === 'svg') {
+      const svg = this.canvas.toSVG();
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = 'voicedraw.svg';
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return true;
+    }
+    const dataURL = this.canvas.toDataURL({ format: format || 'png', quality: 1 });
     const link = document.createElement('a');
-    link.download = `voicedraw.${format}`;
+    link.download = `voicedraw.${format || 'png'}`;
     link.href = dataURL;
     document.body.appendChild(link);
     link.click();

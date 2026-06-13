@@ -21,6 +21,14 @@ class VoiceDrawApp {
       document.getElementById('footerText').textContent = active ? '请说出绘图指令...' : '点击 🎤 开始语音绘图';
     });
 
+    // 下载按钮
+    document.getElementById('downloadPngBtn').addEventListener('click', () => {
+      this.engine.saveImage('png');
+    });
+    document.getElementById('downloadSvgBtn').addEventListener('click', () => {
+      this.engine.saveImage('svg');
+    });
+
     document.querySelectorAll('.quick-commands span').forEach(el => {
       el.addEventListener('click', () => {
         this._execute(el.textContent);
@@ -33,6 +41,12 @@ class VoiceDrawApp {
       this._execute(text);
     };
 
+    this.voice.onInterim = (text) => {
+      // 实时显示识别中的文字
+      const hintEl = document.getElementById('statusHint');
+      hintEl.textContent = text;
+    };
+
     this.voice.onStatus = (state, text) => {
       const statusEl = document.getElementById('statusText');
       const hintEl = document.getElementById('statusHint');
@@ -40,7 +54,7 @@ class VoiceDrawApp {
 
       switch (state) {
         case 'listening': statusEl.textContent = '🎤 聆听中'; hintEl.textContent = '请说出指令'; break;
-        case 'recognizing': statusEl.textContent = '🔍 识别中'; hintEl.textContent = text; break;
+        case 'recognizing': statusEl.textContent = '🔍 识别中'; break;
         case 'success': statusEl.textContent = '✅ 已识别'; hintEl.textContent = text; break;
         case 'error': statusEl.textContent = '❌ 错误'; hintEl.textContent = text; break;
         default: statusEl.textContent = '就绪'; hintEl.textContent = '点击麦克风开始'; break;
@@ -51,19 +65,59 @@ class VoiceDrawApp {
   _execute(text) {
     document.getElementById('lastCommand').textContent = text;
 
-    const command = this.parser.parse(text);
+    // 先走本地规则匹配（<1ms），失败再走云端 NLP
+    let command = this.parser.parse(text);
 
     if (!command) {
-      this._addHistory(text, '❌ 未识别');
-      this.voice.speak('没听懂这个指令，请再说一遍');
+      // 本地未命中，走云端语义理解
+      this._executeNLP(text);
       return;
     }
 
+    this._runCommand(command, text);
+  }
+
+  async _executeNLP(text) {
+    const statusEl = document.getElementById('statusText');
+    const hintEl = document.getElementById('statusHint');
+    statusEl.textContent = '🤔 理解中';
+    statusEl.className = 'status-text recognizing';
+    hintEl.textContent = '正在理解你的意思...';
+
+    try {
+      const res = await fetch('/api/nlp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      const command = data.command;
+
+      if (!command || command.action === 'unknown') {
+        statusEl.textContent = '就绪';
+        statusEl.className = 'status-text';
+        hintEl.textContent = '点击麦克风开始';
+        this._addHistory(text, '❌ 未识别');
+        this.voice.speak('没听懂这个指令，请再说一遍');
+        return;
+      }
+
+      statusEl.textContent = '✅ 已识别';
+      statusEl.className = 'status-text success';
+      this._runCommand(command, text);
+    } catch (e) {
+      statusEl.textContent = '就绪';
+      statusEl.className = 'status-text';
+      this._addHistory(text, '❌ 网络错误');
+      this.voice.speak('网络出了点问题，请重试');
+    }
+  }
+
+  _runCommand(command, text) {
     let success = true;
     let feedback = '';
 
     switch (command.action) {
-      // ===== 画布 =====
       case 'newCanvas':
         this.engine.newCanvas();
         feedback = '新建画布';

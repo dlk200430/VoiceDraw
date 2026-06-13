@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: voicedraw
+    env: node
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: STATIC_PATH
+        value: ./public
+      - key: ZHIPU_API_KEY
+        sync: false
