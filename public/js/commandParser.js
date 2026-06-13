@@ -177,11 +177,30 @@ class CommandParser {
     if (t.includes('无填充') || t.includes('取消填充') || t.includes('去掉填充')) return { action: 'fillColor', color: 'transparent' };
 
     // ============ 绘制图形 ============
-    for (const [keyword, shape] of Object.entries(this.shapes)) {
-      if (t.includes(keyword) && (t.includes('画') || t.includes('添加') || t.includes('新建') || t.includes('创建') || t.startsWith(keyword))) {
-        return this._parseDrawCommand(t, shape);
+    // 空间关系短语预处理："在X里面画Y" → "画Y"
+    let drawText = t;
+    const spatialMatch = t.match(/(?:在|于).*(?:里面|上面|旁边|中间|内部|之上|之下).*(?:画|添加|新建|创建|覆盖|放)(.+)/);
+    if (spatialMatch) {
+      drawText = '画' + spatialMatch[1];
+    }
+    // "覆盖X" → "画X"
+    if (t.includes('覆盖') && !drawText.includes('画')) {
+      const coverMatch = t.match(/覆盖(.+)/);
+      if (coverMatch) drawText = '画' + coverMatch[1];
+    }
+
+    // 先检查是否有绘制意图
+    const hasDrawIntent = drawText.includes('画') || drawText.includes('添加') || drawText.includes('新建') || drawText.includes('创建');
+    if (hasDrawIntent) {
+      // 按关键词长度降序匹配
+      const sortedShapes = Object.entries(this.shapes).sort((a, b) => b[0].length - a[0].length);
+      for (const [keyword, shape] of sortedShapes) {
+        if (drawText.includes(keyword)) {
+          return this._parseDrawCommand(drawText, shape);
+        }
       }
     }
+    // 颜色+形状简写（如"红圆""蓝方块"），不需要"画"字
     for (const [cname, chex] of Object.entries(this.colors)) {
       for (const [sname, sshape] of Object.entries(this.shapes)) {
         if (t.includes(cname + sname) || t === cname + sname) return { action: 'draw', shape: sshape, color: chex, colorName: cname };

@@ -34,7 +34,9 @@ app.post('/api/nlp', async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'no text' });
 
+    console.log('[NLP] 输入:', text);
     const command = await parseNaturalLanguage(text);
+    console.log('[NLP] 输出:', JSON.stringify(command));
     res.json({ command });
   } catch (e) {
     console.error('NLP error:', e.message);
