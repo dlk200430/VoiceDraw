@@ -1,151 +1,124 @@
 /**
  * VoiceController — 语音识别与合成
- * Web Speech API + AudioContext VAD，实时交互
+ * 前端录音 → 后端智谱 ASR，高精度识别
  */
 class VoiceController {
   constructor() {
-    this.recognition = null;
     this.isListening = false;
     this.onResult = null;
     this.onStatus = null;
     this.onInterim = null;
-    this._restartTimer = null;
-    this._vadTimer = null;
-    this._lastSpeech = 0;
+    this._mediaRecorder = null;
+    this._audioChunks = [];
+    this._silenceTimer = null;
     this._silenceThreshold = 1500;
-    this._pendingFinal = '';
+    this._lastSpeech = 0;
+    this._audioCtx = null;
+    this._analyser = null;
+    this._vadInterval = null;
     this._isSpeaking = false;
-    this._init();
-  }
-
-  _init() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      console.warn('浏览器不支持 SpeechRecognition');
-      return;
-    }
-    this._initVAD();
-    this._initRecognition();
-  }
-
-  _initRecognition() {
-    this.recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-    this.recognition.lang = 'zh-CN';
-    this.recognition.maxAlternatives = 1;
-
-    this.recognition.onresult = (event) => {
-      let interim = '';
-      let final = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const text = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          final += text;
-        } else {
-          interim += text;
-        }
-      }
-
-      if (interim) {
-        this._lastSpeech = Date.now();
-        this._setStatus('recognizing', interim);
-        if (this.onInterim) this.onInterim(interim);
-      }
-
-      if (final) {
-        this._pendingFinal += final;
-        this._lastSpeech = Date.now();
-      }
-    };
-
-    this.recognition.onerror = (event) => {
-      console.warn('语音识别错误:', event.error);
-      if (event.error === 'no-speech') {
-        this._setStatus('listening', '正在聆听...');
-        return;
-      }
-      if (event.error === 'aborted') return;
-      if (event.error === 'network') {
-        // Chrome 国内网络问题，静默重启
-        this._scheduleRestart();
-        return;
-      }
-      this._setStatus('error', '识别失败，请重试');
-    };
-
-    this.recognition.onend = () => {
-      if (this.isListening) {
-        this._scheduleRestart();
-      }
-    };
+    this._processing = false;
   }
 
   _initVAD() {
-    // AudioContext 检测音量
     try {
-      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      this._analyser = this._audioCtx.createAnalyser();
+      this._analyser.fftSize = 256;
       this._vadInterval = setInterval(() => {
-        if (!this.isListening || this._isSpeaking) return;
-        const elapsed = Date.now() - this._lastSpeech;
-        if (this._pendingFinal && elapsed > this._silenceThreshold) {
-          this._commitPending();
+        if (!this.isListening || this._isSpeaking || this._processing) return;
+        const data = new Uint8Array(this._analyser.frequencyBinCount);
+        this._analyser.getByteFrequencyData(data);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length;
+        if (avg > 15) {
+          this._lastSpeech = Date.now();
         }
-      }, 300);
+        const elapsed = Date.now() - this._lastSpeech;
+        if (this._audioChunks.length > 0 && elapsed > this._silenceThreshold) {
+          this._sendAudio();
+        }
+      }, 200);
     } catch (e) {
       console.warn('VAD 初始化失败:', e);
     }
   }
 
-  _commitPending() {
-    if (!this._pendingFinal.trim()) return;
-    const text = this._pendingFinal.trim();
-    this._pendingFinal = '';
-    this._setStatus('success', text);
-    if (this.onResult) this.onResult(text);
-  }
-
-  _scheduleRestart() {
-    if (this._restartTimer) clearTimeout(this._restartTimer);
-    this._restartTimer = setTimeout(() => {
-      if (this.isListening && !this._isSpeaking) {
-        try { this.recognition.start(); } catch (e) {
-          // 可能已经在运行
-        }
-      }
-    }, 150);
-  }
-
-  get isSupported() {
-    return !!this.recognition;
-  }
-
-  start() {
-    if (!this.recognition) {
-      this.speak('您的浏览器不支持语音识别，请使用 Chrome 浏览器');
-      return false;
-    }
-    if (this.isListening) return true;
-
+  async start() {
     try {
-      this.recognition.start();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this._initVAD();
+
+      // 连接 AudioContext
+      if (this._audioCtx) {
+        const source = this._audioCtx.createMediaStreamSource(stream);
+        source.connect(this._analyser);
+      }
+
+      this._mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'
+      });
+
+      this._mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          this._audioChunks.push(e.data);
+        }
+      };
+
+      // 每 2 秒收集一段
+      this._mediaRecorder.start(2000);
+
       this.isListening = true;
-      this._pendingFinal = '';
       this._lastSpeech = Date.now();
       this._setStatus('listening', '正在聆听...');
       return true;
     } catch (e) {
-      console.error('启动语音识别失败:', e);
+      console.error('麦克风启动失败:', e);
+      this._setStatus('error', '麦克风权限未授予');
+      this.speak('请允许麦克风权限');
       return false;
     }
   }
 
+  async _sendAudio() {
+    if (this._audioChunks.length === 0 || this._processing) return;
+    this._processing = true;
+
+    const blob = new Blob(this._audioChunks, { type: 'audio/webm' });
+    this._audioChunks = [];
+
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise((resolve) => {
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(blob);
+      });
+
+      const resp = await fetch('/api/asr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: base64 })
+      });
+
+      const data = await resp.json();
+      if (data.text && data.text.trim()) {
+        const text = data.text.trim();
+        this._setStatus('success', text);
+        if (this.onResult) this.onResult(text);
+      }
+    } catch (e) {
+      console.error('ASR 请求失败:', e);
+    }
+
+    this._processing = false;
+  }
+
   stop() {
     this.isListening = false;
-    this._pendingFinal = '';
-    if (this._restartTimer) clearTimeout(this._restartTimer);
-    try { this.recognition.stop(); } catch (e) {}
+    if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
+      this._mediaRecorder.stop();
+      this._mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    this._audioChunks = [];
     this._setStatus('idle', '就绪');
   }
 
@@ -166,7 +139,6 @@ class VoiceController {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'zh-CN';
     utterance.rate = 1.1;
-    utterance.pitch = 1.0;
     utterance.volume = 0.85;
 
     const voices = window.speechSynthesis.getVoices();
@@ -176,12 +148,7 @@ class VoiceController {
     utterance.onend = () => {
       this._isSpeaking = false;
       this._lastSpeech = Date.now();
-      // 播报完自动恢复识别
-      if (this.isListening) {
-        this._scheduleRestart();
-      }
     };
-
     utterance.onerror = () => {
       this._isSpeaking = false;
       this._lastSpeech = Date.now();
