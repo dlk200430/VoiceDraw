@@ -21,7 +21,6 @@ class VoiceDrawApp {
       document.getElementById('footerText').textContent = active ? '请说出绘图指令...' : '点击 🎤 开始语音绘图';
     });
 
-    // 快捷指令点击
     document.querySelectorAll('.quick-commands span').forEach(el => {
       el.addEventListener('click', () => {
         this._execute(el.textContent);
@@ -64,7 +63,7 @@ class VoiceDrawApp {
     let feedback = '';
 
     switch (command.action) {
-      // 画布
+      // ===== 画布 =====
       case 'newCanvas':
         this.engine.newCanvas();
         feedback = '新建画布';
@@ -81,14 +80,24 @@ class VoiceDrawApp {
         success = this.engine.redo();
         feedback = success ? '已重做' : '没有可重做的操作';
         break;
+      case 'setBackground':
+        this.engine.setBackground(command.color);
+        feedback = `背景已改为${command.colorName}`;
+        break;
 
-      // 绘制
+      // ===== 绘制 =====
       case 'draw':
         this.engine.draw(command.shape, command.color, command.size);
         feedback = `画了一个${command.colorName || this.parser.getColorName(command.color)}的${this._shapeName(command.shape)}`;
         break;
 
-      // 颜色
+      // ===== 画笔 =====
+      case 'brushMode':
+        success = this.engine.setBrushMode(command.enable);
+        feedback = command.enable ? '画笔模式已开启，可以在画布上自由绘制' : '画笔模式已关闭';
+        break;
+
+      // ===== 颜色 =====
       case 'changeColor':
         success = this.engine.changeColor(command.color);
         feedback = success ? `颜色已改为${command.colorName}` : '请先选择一个图形';
@@ -102,7 +111,69 @@ class VoiceDrawApp {
         feedback = success ? `已填充${command.colorName || '透明'}` : '请先选择一个图形';
         break;
 
-      // 移动
+      // ===== 旋转 =====
+      case 'rotate':
+        success = this.engine.rotate(command.angle);
+        feedback = success ? `已旋转${command.angle}度` : '请先选择一个图形';
+        break;
+
+      // ===== 翻转 =====
+      case 'flip':
+        success = this.engine.flip(command.direction);
+        feedback = success ? `已${command.direction === 'horizontal' ? '水平' : '垂直'}翻转` : '请先选择一个图形';
+        break;
+
+      // ===== 图层 =====
+      case 'layer':
+        const layerNames = { bringToFront: '置顶', sendToBack: '置底', bringForward: '上移一层', sendBackwards: '下移一层' };
+        success = this.engine.layer(command.op);
+        feedback = success ? `已${layerNames[command.op]}` : '请先选择一个图形';
+        break;
+
+      // ===== 复制粘贴 =====
+      case 'copy':
+        success = this.engine.copy();
+        feedback = success ? '已复制' : '请先选择一个图形';
+        break;
+      case 'paste':
+        success = this.engine.paste();
+        feedback = success ? '已粘贴' : '没有可粘贴的内容，请先复制';
+        break;
+      case 'duplicate':
+        success = this.engine.duplicate();
+        feedback = success ? '已复制一个' : '请先选择一个图形';
+        break;
+
+      // ===== 锁定 =====
+      case 'lock':
+        success = this.engine.lock(command.locked);
+        feedback = success ? (command.locked ? '已锁定' : '已解锁') : '请先选择一个图形';
+        break;
+
+      // ===== 透明度 =====
+      case 'setOpacity':
+        success = this.engine.setOpacity(command.value);
+        feedback = success ? `透明度已设为${Math.round(command.value * 100)}%` : '请先选择一个图形';
+        break;
+
+      // ===== 对齐 =====
+      case 'align':
+        const alignNames = { left: '左对齐', right: '右对齐', centerH: '水平居中', top: '顶部对齐', bottom: '底部对齐', centerV: '垂直居中' };
+        success = this.engine.align(command.direction);
+        feedback = success ? `已${alignNames[command.direction]}` : '请先选择一个图形';
+        break;
+
+      // ===== 组合 =====
+      case 'group':
+        success = this.engine.group();
+        feedback = success ? '已组合' : '请先选择多个图形';
+        break;
+      case 'ungroup':
+        success = this.engine.ungroup();
+        feedback = success ? '已取消组合' : '请先选择一个组合';
+        break;
+
+      // ===== 移动 =====
       case 'move':
         success = this.engine.moveTo(command.position);
         feedback = success ? '已移动' : '请先选择一个图形';
@@ -112,7 +183,7 @@ class VoiceDrawApp {
         feedback = success ? '已移动' : '请先选择一个图形';
         break;
 
-      // 大小
+      // ===== 大小 =====
       case 'resize':
         success = this.engine.resize(command.delta, command.scale);
         feedback = success ? '已调整大小' : '请先选择一个图形';
@@ -122,7 +193,7 @@ class VoiceDrawApp {
         feedback = success ? `半径已设为${command.value}` : '请先选择一个圆形';
         break;
 
-      // 选择
+      // ===== 选择 =====
       case 'selectAll':
         success = this.engine.selectAll();
         feedback = success ? '已全选' : '画布上没有图形';
@@ -136,7 +207,7 @@ class VoiceDrawApp {
         feedback = success ? `已选择${this._shapeName(command.shape)}` : `没有找到${this._shapeName(command.shape)}`;
         break;
 
-      // 删除
+      // ===== 删除 =====
       case 'deleteSelected':
         success = this.engine.deleteSelected();
         feedback = success ? '已删除' : '请先选择一个图形';
@@ -146,23 +217,27 @@ class VoiceDrawApp {
         feedback = success ? `已删除所有${this._shapeName(command.shape)}` : `没有${this._shapeName(command.shape)}`;
         break;
 
-      // 线条
+      // ===== 线条/边框 =====
+      case 'setStrokeColor':
+        success = this.engine.setStrokeColor(command.color);
+        feedback = success ? `边框已改为${command.colorName}` : '请先选择一个图形';
+        break;
       case 'setStrokeWidth':
         success = this.engine.setStrokeWidth(command.value);
-        feedback = success ? `线宽已设为${command.value}` : '请先选择一个图形';
+        feedback = success ? (command.value === 0 ? '已去掉边框' : `线宽已设为${command.value}`) : '请先选择一个图形';
         break;
       case 'setStrokeDash':
         success = this.engine.setStrokeDash(command.dash);
         feedback = success ? (command.dash.length ? '已设为虚线' : '已设为实线') : '请先选择一个图形';
         break;
 
-      // 文本
+      // ===== 文本 =====
       case 'addText':
         this.engine.addText(command.text);
         feedback = `已添加文字"${command.text}"`;
         break;
 
-      // 保存
+      // ===== 保存 =====
       case 'save':
         this.engine.saveImage(command.format);
         feedback = `已保存为 ${command.format.toUpperCase()}`;
@@ -196,12 +271,12 @@ class VoiceDrawApp {
     const map = {
       circle: '圆', square: '正方形', rectangle: '矩形',
       triangle: '三角形', line: '直线', star: '五角星', hexagon: '六边形',
+      arrow: '箭头', heart: '心形',
     };
     return map[shape] || shape;
   }
 }
 
-// 启动
 window.addEventListener('DOMContentLoaded', () => {
   new VoiceDrawApp();
 });
