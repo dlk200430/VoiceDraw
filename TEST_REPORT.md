@@ -5,11 +5,13 @@
 | 项目 | 信息 |
 |------|------|
 | 检测时间 | 2026-06-13 |
-| 浏览器 | Edge（推荐）/ Chrome |
+| 浏览器 | **Microsoft Edge**（必须，Chrome 不可用） |
 | 操作系统 | Windows 11 |
 | Node.js | v24.11.1 |
 | 服务器 | Express 4.x，端口 3000 |
 | 测试框架 | Jest 29.x |
+
+> ⚠️ **浏览器兼容性说明：** 语音识别依赖 Web Speech API。Chrome 的语音服务走 Google 服务器（国内被墙），Firefox 不支持该 API，因此**必须使用 Microsoft Edge 浏览器**。Edge 走微软 Azure 语音服务，国内直连可用。
 
 ## 功能检测
 

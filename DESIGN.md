@@ -1,5 +1,16 @@
 # DESIGN.md — VoiceDraw 设计文档
 
+## ⚠️ 浏览器兼容性
+
+| 浏览器 | 语音识别 | 说明 |
+|--------|----------|------|
+| **Microsoft Edge** | ✅ 可用 | 走微软 Azure 语音服务，国内直连 |
+| Chrome | ❌ 不可用 | Web Speech API 走 Google 服务器，国内被墙 |
+| Firefox | ❌ 不可用 | 不支持 Web Speech API |
+| 360 / QQ 等国产浏览器 | ❌ 不可用 | 基于 Chromium 但语音服务同样被墙 |
+
+**本项目语音识别依赖 Web Speech API，必须使用 Edge 浏览器。**
+
 ## 一、用户故事
 
 | 优先级 | 用户故事 | 验收标准 | 实现状态 |
