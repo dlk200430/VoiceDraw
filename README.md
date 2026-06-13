@@ -2,6 +2,12 @@
 
 > 🎤 纯语音控制的绘图工具。全程零键盘零鼠标，说句话就能画。
 
+**Demo 视频**: [B站观看](https://www.bilibili.com/video/BV1PyJH6HEa7/)
+
+**设计文档**: [DESIGN.md](DESIGN.md) — 含用户故事、架构选型、成本策略
+
+**检测报告**: [TEST_REPORT.md](TEST_REPORT.md) — 含 74 项检测结果、修改记录
+
 ## ⚠️ 重要：浏览器要求
 
 **本项目必须使用 Microsoft Edge 浏览器打开，否则语音识别功能无法使用！**
