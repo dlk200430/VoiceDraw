@@ -71,42 +71,42 @@
 ### 整体架构
 
 ```
-用户语音 → MediaRecorder 录音 → VAD 静音检测 → 智谱 GLM-4V-Plus (ASR)
-         → CommandParser (本地规则匹配，<1ms)
-              ├── 命中 → DrawingEngine (Fabric.js) → TTS 反馈
-              └── 未命中 → 智谱 GLM-4-Flash (NLP 语义理解) → DrawingEngine → TTS 反馈
+用户语音 → Web Speech API（优先，Edge 可用）
+         → CommandParser（本地规则匹配 + 空间关系预处理，<1ms）
+              ├── 命中 → DrawingEngine（Fabric.js） → TTS 反馈
+              └── 未命中 → 智谱 GLM-4-Flash（NLP 语义理解） → DrawingEngine → TTS 反馈
 ```
 
-前端录音通过 `/api/asr` 发送到 Express 后端转写。指令解析采用**本地优先 + 云端兜底**策略：面板关键词本地毫秒响应，自由表达走智谱 NLP。
+前端录音通过 `/api/asr` 发送到 Express 后端转写（云端兜底）。指令解析采用**本地优先 + 云端兜底**策略：面板关键词本地毫秒响应，自由表达走智谱 NLP。
 
 ### 核心选型
 
 | 层级 | 技术 | 理由 |
 |------|------|------|
-| ASR | 智谱 GLM-4V-Plus | 中文识别率高、支持音频 base64 直传 |
+| ASR | Web Speech API（优先）/ 智谱 ASR（兜底） | Edge 可用，国内直连，云端兜底 |
 | NLP | 智谱 GLM-4-Flash | 语义理解兜底，任意自然语言→结构化指令 |
 | TTS | Web Speech API | 免费、中文自然、100-300ms |
-| 指令解析 | 规则匹配 + 智谱 NLP | <1ms 本地 + 1-2s 云端兜底 |
+| 指令解析 | 规则匹配 + 空间关系预处理 + 智谱 NLP | <1ms 本地 + 1-2s 云端兜底 |
 | 绘图引擎 | Fabric.js 5.x | Canvas 封装完善、对象操作简便 |
 | 导出 | PNG (toDataURL) + SVG (toSVG) | 位图/矢量双格式 |
-| 服务 | Express | 静态文件托管 + ASR 代理 |
+| 服务 | Express | 静态文件托管 + ASR/NLP 代理 |
 | 测试 | Jest | 前后端单元测试全覆盖 |
 
 ### 端到端延迟
 
 | 阶段 | 耗时 |
 |------|------|
-| 语音采集 + VAD | 实时 + 1.5s 静音检测 |
-| ASR 识别（智谱 API） | 1-3s |
+| 语音采集 + Web Speech | 实时（<500ms） |
+| ASR 识别（云端兜底） | 1-3s |
 | 指令解析 | <1ms（本地命中）/ 1-2s（NLP 兜底） |
 | 绘图执行 | 16-30ms |
 | TTS 反馈 | 100-300ms |
-| **总计（本地命中）** | **1.5-4s** |
+| **总计（本地命中）** | **<1s** |
 | **总计（NLP 兜底）** | **2.5-6s** |
 
 ## 四、成本策略
 
-- 智谱 GLM-4V-Plus：按 token 计费，单次语音识别约 ¥0.01
+- Web Speech API：浏览器内置，免费
 - 智谱 GLM-4-Flash：按 token 计费，单次语义理解约 ¥0.005（仅 NLP 兜底时触发）
 - 语音合成：Web Speech API（浏览器内置，免费）
 - 指令理解：本地规则匹配（免费）
@@ -117,11 +117,13 @@
 
 | 问题 | 处理方式 |
 |------|----------|
+| 语音识别不准确 | 语音模型训练难度较大，目前仅能稳定识别清晰标准中文。Web Speech API 优先（Edge），云端 ASR 兜底 |
+| 复杂空间指令 | 本地 parser 预处理（"在X里面覆盖Y"→"画Y"），NLP 兜底 |
 | 识别错误 | 自动纠偏，匹配最近指令 |
 | 歧义指令 | 使用默认值（灰色、半径80） |
 | 缺失参数 | 补充默认值 |
 | 无法执行 | TTS 明确告知原因 |
-| 浏览器不支持 | 提示使用 Chrome |
+| 浏览器不支持 | 提示使用 Edge |
 | API 超时 | 15s 超时 + 错误提示 |
 | NLP 理解失败 | 返回 unknown，不执行任何操作 |
 | 闲聊话 | NLP 识别为 unknown，自动忽略 |

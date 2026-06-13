@@ -2,6 +2,10 @@
 
 > 🎤 纯语音控制的绘图工具。全程零键盘零鼠标，说句话就能画。
 
+## ⚠️ 已知问题
+
+**语音识别准确率受限：** 浏览器端语音识别依赖 Web Speech API（Edge 可用）或云端 ASR 方案。由于语音识别模型训练难度大、设备录音质量差异，目前仅能稳定识别清晰发音的标准中文指令。建议使用 **Microsoft Edge 浏览器** 获得最佳体验。复杂自然语言指令（如"在红色圆的里面覆盖蓝色正方形"）的语义理解仍在优化中。
+
 ## ✨ 功能
 
 | 类别 | 支持指令 |
@@ -27,23 +31,23 @@
 | 删除 | 删除、删除圆形 |
 | 保存 | 保存PNG、导出JPG |
 | 下载 | 画布下方 ⬇ PNG / ⬇ SVG 一键导出 |
-| 自然语言 | 说任何话都能理解（本地规则 + 云端 NLP 兜底） |
+| 自然语言 | 关键词精准匹配 + 空间关系预处理 + 云端 NLP 兜底 |
 
 ## 🏗 架构
 
 ```
-浏览器 (Chrome)
-├── MediaRecorder → 录音 + VAD 静音检测
-├── 智谱 GLM-4V-Plus → 云端语音识别（中文）
-├── CommandParser → 本地规则匹配（<1ms，精准关键词）
-├── 智谱 GLM-4-Flash → 云端 NLP 语义兜底（任意自然语言）
+浏览器 (Edge 推荐)
+├── Web Speech API → 浏览器内置语音识别（优先，Edge 可用）
+├── MediaRecorder → 录音（云端兜底时启用）
+├── CommandParser → 本地规则匹配（<1ms，关键词 + 空间关系预处理）
+├── 智谱 GLM-4-Flash → 云端 NLP 语义兜底
 ├── Fabric.js → Canvas 绘图引擎
 └── Web Speech API → TTS 语音反馈
 ```
 
 后端 Express 服务提供 `/api/asr`（语音转文字）和 `/api/nlp`（语义理解）路由。
 
-**指令解析策略：** 本地规则优先（<1ms，面板关键词 100% 精准），未命中时走云端 NLP（智谱 GLM-4-Flash），闲聊话自动忽略。
+**指令解析策略：** 本地规则优先（<1ms，关键词精准匹配 + 空间关系预处理），未命中时走云端 NLP（智谱 GLM-4-Flash），闲聊话自动忽略。
 
 ## 🚀 快速开始
 
@@ -52,7 +56,7 @@ cd server
 cp .env.example .env   # 编辑填入智谱 API Key
 npm install
 npm start
-# 打开 http://localhost:3000
+# 用 Edge 打开 http://localhost:3000
 ```
 
 或直接运行：
@@ -75,26 +79,22 @@ npm test
 
 ## 🎮 使用方式
 
-1. 点击 🎤 按钮开始聆听
-2. 说出绘图指令（如"画一个红色的圆"）
-3. 系统自动识别、执行、语音反馈
-4. 点击画布下方 ⬇ PNG / ⬇ SVG 下载作品
+1. 用 **Edge 浏览器** 打开 http://localhost:3000
+2. 点击 🎤 按钮开始聆听
+3. 说清晰的标准中文指令（如"画一个红色的圆"）
+4. 系统自动识别、执行、语音反馈
+5. 点击画布下方 ⬇ PNG / ⬇ SVG 下载作品
 
 ## 📋 技术选型
 
 | 层级 | 技术 | 理由 |
 |------|------|------|
-| 语音识别 | 智谱 GLM-4V-Plus | 中文识别率高、支持音频直传 |
+| 语音识别 | Web Speech API（优先）/ 智谱 ASR（兜底） | Edge 可用，国内直连 |
 | 语音合成 | Web Speech API | 免费、中文自然 |
 | 绘图引擎 | Fabric.js 5.x | Canvas 封装完善 |
-| 指令解析 | 规则匹配 + 智谱 NLP 兜底 | 本地 <1ms + 云端语义理解 |
-| 后端 | Express | 静态文件 + ASR 代理 |
+| 指令解析 | 规则匹配 + 空间关系预处理 + 智谱 NLP 兜底 | 本地 <1ms + 云端语义理解 |
+| 后端 | Express | 静态文件 + ASR/NLP 代理 |
 | 测试 | Jest | 前后端全覆盖 |
-
-## 💰 成本
-
-- 智谱 GLM-4V-Plus：按 token 计费，单次识别约 ¥0.01
-- 其余全部免费（浏览器本地计算）
 
 ## 📁 目录结构
 
@@ -113,7 +113,7 @@ VoiceDraw/
 │   ├── .env.example
 │   ├── src/
 │   │   ├── server.js       # Express 服务 + /api/asr + /api/nlp
-│   │   ├── asrService.js   # 智谱 GLM-4V-Plus 转写
+│   │   ├── asrService.js   # 智谱 ASR 转写
 │   │   ├── nlpService.js   # 智谱 GLM-4-Flash 语义理解
 │   │   └── ...
 │   └── __tests__/
