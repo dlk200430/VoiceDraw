@@ -33,6 +33,12 @@ class VoiceDrawApp {
       this._execute(text);
     };
 
+    this.voice.onInterim = (text) => {
+      // 实时显示识别中的文字
+      const hintEl = document.getElementById('statusHint');
+      hintEl.textContent = text;
+    };
+
     this.voice.onStatus = (state, text) => {
       const statusEl = document.getElementById('statusText');
       const hintEl = document.getElementById('statusHint');
@@ -40,7 +46,7 @@ class VoiceDrawApp {
 
       switch (state) {
         case 'listening': statusEl.textContent = '🎤 聆听中'; hintEl.textContent = '请说出指令'; break;
-        case 'recognizing': statusEl.textContent = '🔍 识别中'; hintEl.textContent = text; break;
+        case 'recognizing': statusEl.textContent = '🔍 识别中'; break;
         case 'success': statusEl.textContent = '✅ 已识别'; hintEl.textContent = text; break;
         case 'error': statusEl.textContent = '❌ 错误'; hintEl.textContent = text; break;
         default: statusEl.textContent = '就绪'; hintEl.textContent = '点击麦克风开始'; break;
