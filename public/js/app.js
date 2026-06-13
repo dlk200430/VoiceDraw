@@ -118,6 +118,7 @@ class VoiceDrawApp {
     let feedback = '';
 
     switch (command.action) {
+      case 'newCanvas':
         this.engine.newCanvas();
         feedback = '新建画布';
         break;

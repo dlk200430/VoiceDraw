@@ -6,7 +6,10 @@ const { parseNaturalLanguage } = require('./nlpService');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static(path.join(__dirname, '..', '..', 'public')));
+// 静态文件路径：优先用环境变量，其次本地开发路径
+const staticPath = process.env.STATIC_PATH || path.join(__dirname, '..', '..', 'public');
+console.log('[Server] 静态文件路径:', staticPath);
+app.use(express.static(staticPath));
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/api/health', (req, res) => {
