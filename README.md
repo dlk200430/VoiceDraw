@@ -27,6 +27,7 @@
 | 删除 | 删除、删除圆形 |
 | 保存 | 保存PNG、导出JPG |
 | 下载 | 画布下方 ⬇ PNG / ⬇ SVG 一键导出 |
+| 自然语言 | 说任何话都能理解（本地规则 + 云端 NLP 兜底） |
 
 ## 🏗 架构
 
@@ -34,12 +35,15 @@
 浏览器 (Chrome)
 ├── MediaRecorder → 录音 + VAD 静音检测
 ├── 智谱 GLM-4V-Plus → 云端语音识别（中文）
-├── CommandParser → 本地规则匹配（<1ms）
+├── CommandParser → 本地规则匹配（<1ms，精准关键词）
+├── 智谱 GLM-4-Flash → 云端 NLP 语义兜底（任意自然语言）
 ├── Fabric.js → Canvas 绘图引擎
 └── Web Speech API → TTS 语音反馈
 ```
 
-后端 Express 服务提供 `/api/asr` 路由，调用智谱 API 转写音频。
+后端 Express 服务提供 `/api/asr`（语音转文字）和 `/api/nlp`（语义理解）路由。
+
+**指令解析策略：** 本地规则优先（<1ms，面板关键词 100% 精准），未命中时走云端 NLP（智谱 GLM-4-Flash），闲聊话自动忽略。
 
 ## 🚀 快速开始
 
@@ -83,7 +87,7 @@ npm test
 | 语音识别 | 智谱 GLM-4V-Plus | 中文识别率高、支持音频直传 |
 | 语音合成 | Web Speech API | 免费、中文自然 |
 | 绘图引擎 | Fabric.js 5.x | Canvas 封装完善 |
-| 指令解析 | 规则匹配 | 本地极速（<1ms） |
+| 指令解析 | 规则匹配 + 智谱 NLP 兜底 | 本地 <1ms + 云端语义理解 |
 | 后端 | Express | 静态文件 + ASR 代理 |
 | 测试 | Jest | 前后端全覆盖 |
 
@@ -108,8 +112,9 @@ VoiceDraw/
 │   ├── package.json
 │   ├── .env.example
 │   ├── src/
-│   │   ├── server.js       # Express 服务 + /api/asr
+│   │   ├── server.js       # Express 服务 + /api/asr + /api/nlp
 │   │   ├── asrService.js   # 智谱 GLM-4V-Plus 转写
+│   │   ├── nlpService.js   # 智谱 GLM-4-Flash 语义理解
 │   │   └── ...
 │   └── __tests__/
 │       ├── server.test.js           # 后端测试
