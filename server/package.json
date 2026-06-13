@@ -1,0 +1,16 @@
+{
+  "name": "voicedraw-server",
+  "version": "1.0.0",
+  "description": "VoiceDraw - AI 语音绘图工具后端",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
